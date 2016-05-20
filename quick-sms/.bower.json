@@ -1,0 +1,31 @@
+{
+  "name": "quick-sms",
+  "main": "quick-sms.js",
+  "authors": [
+    "tsafaris <kt@apifon.com>"
+  ],
+  "description": "quick sms description",
+  "license": "MIT",
+  "homepage": "",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "angular": "~1.4.0",
+    "angular-material": "^1.0.0"
+  },
+  "_release": "9b6ce03a7a",
+  "_resolution": {
+    "type": "branch",
+    "branch": "master",
+    "commit": "9b6ce03a7af215956551812532bcc6f84fb4acea"
+  },
+  "_source": "C:\\wamp\\www\\repos\\quick-sms",
+  "_target": "*",
+  "_originalSource": "../repos/quick-sms/"
+}

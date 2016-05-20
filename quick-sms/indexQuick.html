@@ -1,0 +1,51 @@
+<div>
+    <md-toolbar>Send SMS</md-toolbar>
+
+    <form name="smsForm" layout="column" ng-submit="send(message)">
+        <!--Config::  {{config}}-->
+        <md-input-container layout-wrap>
+            <label for="autocompleteInputName">Sender ID</label>
+            <input id="autocompleteInputName" name="autocompleteInputName"
+                   ng-model="senderID" af-senderid ng-required="true">
+        </md-input-container>
+
+        <div class="error" ng-messages="smsForm.autocompleteInputName.$error">
+            <div ng-message="validCharacters">*Invalid characters detected</div>
+            <div ng-message="required">*SenderID is required</div>
+        </div>
+
+        <md-input-container>
+            <label>Country Code</label>
+            <md-select ng-model="countryCode">
+                <md-option ng-repeat="(country, code) in countryCodesObj track by $index">
+                    {{country+' ('+code+')'}}
+                </md-option>
+            </md-select>
+        </md-input-container>
+
+        <md-input-container layout-wrap>
+            <label for="recipient">Recipient's number - 10 digits long</label>
+            <input id="recipient" name="recipient" type="number"
+                   ng-keyup="!(Sms.mobileNo.$invalid || Sms.prefix.$invalid || quickSms.smsForm.mobile.length == 0 || quickSms.smsForm.mobile == null ) ? quickSms.checkKey($event) : null"
+                   ng-model="recipient"
+                   ng-minlength="10" ng-maxlength="10" ng-pattern="/^[0-9]+$/"
+                   ng-class="{submitted: quickSms.smsForm.submitted}"
+                   ng-class="{success: Sms.mobileNo.$valid && !Sms.mobileNo.$pristine, danger: Sms.mobileNo.$invalid}"
+                   required>
+        </md-input-container>
+
+        <!--<textarea rows="10" ng-model="message" placeholder="Write your message..." required></textarea>-->
+
+        <af-sms-textarea text-form="Sms" text-model="message" text-encoding="config."
+                         text-maxsms="quickSms.smsMax"
+                         text-smscount="quickSms.smsForm.smsCount" text-options="{{ {specialFields:true} }}"
+                         errors="quickSms.smsForm.tempErrors">
+        </af-sms-textarea>
+        <div layout="row">
+            <md-button type="submit" class="md-accent md-raised" ng-disabled="!message">Preview</md-button>
+            <span flex></span>
+            <md-button type="submit" class="md-accent md-raised" ng-disabled="!message || !recipient || !senderID">Send</md-button>
+        </div>
+    </form>
+
+</div>
