@@ -16,7 +16,7 @@
 
         <md-input-container>
             <label>Country Code</label>
-            <md-select ng-model="countryCode">
+            <md-select ng-model="countryCode" required>
                 <md-option ng-repeat="(country, code) in countryCodesObj track by $index">
                     {{country+' ('+code+')'}}
                 </md-option>
@@ -34,17 +34,24 @@
                    required>
         </md-input-container>
 
-        <!--<textarea rows="10" ng-model="message" placeholder="Write your message..." required></textarea>-->
+        <md-input-container>
+            <label for="encoding">Select your encoding</label>
+            <md-select id="encoding" ng-model="endcodingName">
+                <md-optgroup ng-repeat="group in possibleEncodings track by $index" label="{{ group.id }}">
+                    <md-option ng-repeat="name in group.name" ng-selected="name==encoding.name" value="{{ name }}"> {{ name }}</md-option>
+                </md-optgroup>
+            </md-select>
+        </md-input-container>
 
-        <af-sms-textarea text-form="Sms" text-model="message" text-encoding="config."
-                         text-maxsms="quickSms.smsMax"
-                         text-smscount="quickSms.smsForm.smsCount" text-options="{{ {specialFields:true} }}"
-                         errors="quickSms.smsForm.tempErrors">
-        </af-sms-textarea>
+        <af-sms-textarea></af-sms-textarea>
+
         <div layout="row">
             <md-button type="submit" class="md-accent md-raised" ng-disabled="!message">Preview</md-button>
             <span flex></span>
-            <md-button type="submit" class="md-accent md-raised" ng-disabled="!message || !recipient || !senderID">Send</md-button>
+            <!--<md-button type="submit" class="md-accent md-raised" ng-disabled="!message || !recipient || !senderID">-->
+            <md-button type="submit" class="md-accent md-raised" ng-disabled="smsForm.$invalid">
+                Send
+            </md-button>
         </div>
     </form>
 

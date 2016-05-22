@@ -1,8 +1,11 @@
-angular.module('quickSms', ['ngMessages'])
+angular.module('quickSms', ['ngMaterial', 'ngMessages'])
     .controller('quickSmsController', quickSmsController)
+    .controller('smsTextareaController', smsTextareaController)
     .directive('sendSms', sendSmsDirective)
     .directive('afSenderid', afSenderidDirective)
-    .provider('ktSendSms', ktSendSms);
+    .directive('afSmsTextarea', smsTextareaDirective)
+    .service('smsEncodingService', smsEncodingService)
+    .provider('ktSendSms', ktSendSmsProvider);
 
 quickSmsController.$inject = ['$scope', 'ktSendSms'];
 sendSmsDirective.$inject = [];
@@ -30,12 +33,13 @@ function quickSmsController($scope, ktSendSms) {
     };
 }
 
-function ktSendSms() {
+function ktSendSmsProvider() {
     var url = false;
     var senderID = false;
     var config = {
         validityPeriod: 8,
-        encoding: 'default'
+        encoding: 'default',
+        maxSms: 5
     };
 
     this.apiUrl = function (_url) {
@@ -83,7 +87,7 @@ function ktSendSms() {
                     var countryCode = data.countryCode.split('(+')[1].replace(/\)/g, '');
 
                     console.log('config is: ', config);
-                    console.log('Provider sendSms to url: ', url, ' with senderID: ', from, 'to number ', countryCode, '-', to, 'and message: ', text);
+                    //console.log('Provider sendSms to url: ', url, ' with senderID: ', from, 'to number ', countryCode, '-', to, 'and message: ', text);
 
                     if (!url) {
                         throw new Error('Please setup feedback API uri with "ktSendSmsProvider"');
@@ -168,6 +172,177 @@ function afSenderidDirective() {
         }
     };
 }
+
+
+
+
+function smsEncodingService() {
+
+    var possibleEncodings = [
+        {
+            id: '7-bit',
+            name: ['default alphabet', 'US-ASCII'],
+            totalChars: 160,
+            splitterLength: 153
+        },
+        {
+            id: '8-bit',
+            name: ['Latin-1 ISO-8859-1', 'Binary', 'Cyrillic ISO-8859-5', 'Hebrew ISO-8859-8'],
+            totalChars: 140,
+            splitterLength: 134
+        },
+        {
+            id: '16-bit',
+            name: ['UTF-16'],
+            totalChars: 70,
+            splitterLength: 67
+        }
+    ];
+
+    function getEncodings(encodingName) {
+        if (encodingName == undefined) {
+            return possibleEncodings;
+        }
+
+        for (var i = 0; i < possibleEncodings.length; i++) {
+            if (possibleEncodings[i].name.indexOf(encodingName) > -1) {
+                return {
+                    name: encodingName,
+                    totalChars: possibleEncodings[i].totalChars,
+                    splitterLength: possibleEncodings[i].splitterLength
+                }
+            }
+        }
+    }
+
+    return {
+        getEncodings: getEncodings
+    }
+}
+
+smsTextareaController.$inject = ['$scope', 'smsEncodingService'];
+
+function smsTextareaController($scope, smsEncodingService) {
+
+    $scope.textInvalid = false;
+    $scope.showLengthError = false;
+    $scope.textLength = 0;
+    $scope.smsCount = 0;
+
+    $scope.possibleEncodings = smsEncodingService.getEncodings();
+    $scope.encoding = smsEncodingService.getEncodings('default alphabet');
+
+    $scope.remainingChars = $scope.encoding.totalChars;
+
+    // if encoding changes, redo the calculations
+    $scope.$watch('endcodingName', function (newVal) {
+        if (newVal==undefined) return;
+        $scope.encoding = smsEncodingService.getEncodings(newVal);
+        calcSmsCount();
+    });
+
+
+
+    // Get special fields from account
+    $scope.fields = ['firstName'];  //contactType; // Bind this with the account's special fields - how to get this?
+
+    $scope.$watch('message', function (newVal, oldVal) {
+        if (newVal == oldVal) return;
+
+        if (newVal == undefined) {
+            $scope.textLength = 0;
+            calcSmsCount();
+            return;
+        }
+
+        $scope.textDirty = true; // after that show ng-messages
+
+        var totalFieldsLength = 0;
+        var cleanString = $scope.message; //get copy of text
+        var reg = /{(.*?)}/g; //match all text between { and }
+        var matches = [], found;
+
+        while (found = reg.exec(newVal)) {
+            var position=0;
+            for (var char in found[0]) {
+                if (found[0][char] == '{')
+                    position++;
+            }
+            found[0] = found[0].replace(/{/g, '');
+            found[0] = found[0].replace(/}/g, '');
+            if (found[0].length > 0)
+                matches.push(found[0]);
+            reg.lastIndex = found.index + position; // to catch the case of multiple {{{ followed by specialField i.e. {{{firstName}
+        }
+
+        // Loop through detected special fields and try to match them with the account fields array
+        // If successful get the maxLength of the field and replace in text length
+        for (var j = 0; j < matches.length; j++) {
+            for (var k = 0; k < $scope.fields.length; k++) {
+                if ($scope.fields[k].fieldName == matches[j]) {
+                    totalFieldsLength += $scope.fields[k].maxLength;
+                    cleanString = cleanString.replace("{" + $scope.fields[k].fieldName + "}", "");
+                }
+            }
+        }
+        cleanString = cleanString.replace(/(\u000c|\u005e|\u007b|\u007d|\\|\u005b|\u007e|\u005d|\u007c|\u20ac)/gi, 'az');
+        $scope.textLength = cleanString.length + totalFieldsLength;
+        //console.log('clean text length::', $scope.textLength);
+        calcSmsCount();
+
+    });
+
+    function calcSmsCount() {
+        if ($scope.textLength > $scope.encoding.totalChars) {
+            $scope.smsCount = Math.ceil($scope.textLength / $scope.encoding.splitterLength);
+            $scope.smsLength = ($scope.textLength - 1) % $scope.encoding.splitterLength;
+            $scope.remainingChars = ($scope.encoding.splitterLength - 1) - $scope.smsLength;
+        }
+        else {
+            $scope.smsCount = Math.ceil($scope.textLength / $scope.encoding.totalChars);
+            $scope.smsLength = ($scope.textLength - 1) % $scope.encoding.totalChars;
+            $scope.remainingChars = ($scope.encoding.totalChars - 1) - $scope.smsLength;
+        }
+
+        $scope.textInvalid = false;
+        $scope.showLengthError = false;
+        $scope.smsForm.message.$setValidity("tooLong", true);
+
+        if ($scope.textDirty && $scope.smsCount > 1 && $scope.textLength > $scope.encoding.splitterLength*$scope.config.maxSms) {
+            $scope.textInvalid = true;
+            $scope.showLengthError = true;
+            // Set form invalid
+            $scope.smsForm.message.$setValidity("tooLong", false);
+        }
+    }
+
+    function isEmpty(object) {
+        for (var key in object) {
+            if (object.hasOwnProperty(key)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    $scope.$watch('Sms.$error', function(newVal, oldVal) {
+        $scope.errors = newVal;
+    });
+
+}
+
+function smsTextareaDirective() {
+
+    return {
+        restrict: 'E',
+        controller: 'smsTextareaController',
+        templateUrl: 'bower_components/quick-sms/af.smsTextarea.html',
+        scope: false
+    };
+}
+
+
+
 
 
 // angular.module('quickSms').run(['$templateCache', function($templateCache) {

@@ -1,0 +1,33 @@
+<md-input-container layout="row" md-no-float style="height:100px; max-height:100px; overflow-y:auto;">
+    <textarea ng-model="message" name="message" ng-trim="false" placeholder="Type your message" required maxlength="10"></textarea>
+</md-input-container>
+
+
+
+<div layout="row" layout-align="space-between center" ng-class="{'mobileListError': showSoloError || showLengthError}">
+    <div>
+        <span ng-if="smsCount<=config.maxSms">Characters left:  <b>{{ remainingChars + "/" }} </b></span>
+        <span ng-if="config.maxSms==1 && smsCount>1">Characters left: <b> {{ 0 + "/" }} </b></span>
+        <span ng-if="config.maxSms>1 && smsCount>config.maxSms">Characters left: <b> {{ 0 + "/" }} </b></span>
+        <b>
+            <span ng-if="smsCount<2">{{encoding.totalChars}}</span>
+            <span ng-if="smsCount>1 && smsCount<=config.maxSms">{{encoding.splitterLength * smsCount}}</span>
+            <span ng-if="config.maxSms==1 && smsCount>1">{{encoding.totalChars * config.maxSms}}</span>
+            <span ng-if="config.maxSms>1 && smsCount>config.maxSms">{{encoding.splitterLength * config.maxSms }}</span>
+        </b>
+    </div>
+
+    <div class="toBeHighlighted" ng-class="{highlightText: highlightedText}">Total SMS: <b> {{smsCount
+        + "/" + config.maxSms}}</b></div>
+</div>
+
+
+
+
+<div ng-show="showLengthError">
+    <p class="mobileListError">*Maximum length exceeded</p>
+</div>
+
+<div ng-messages="Sms.messageBody.$error" ng-show="!Sms.$submitted">
+    <div ng-message="required" style="color: red;">*Text message is required</div>
+</div>
